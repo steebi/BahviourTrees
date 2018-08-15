@@ -15,16 +15,6 @@ public class NavMeshWanderer : MonoBehaviour
     [SerializeField]
     private float m_offset = 1.0f;
 
-    private GameObject m_targetObject;
-    public GameObject TargetObject
-    {
-        get {
-            if (m_targetObject == null)
-                m_targetObject = this.gameObject;
-            return m_targetObject;   
-        }
-    }
-
     private NavMeshAgent m_navAgent;
     public NavMeshAgent NavAgent
     {
@@ -59,15 +49,17 @@ public class NavMeshWanderer : MonoBehaviour
 
     public bool IsAtDestination()
     {
-        return NavAgent.velocity == Vector3.zero;
+        return NavAgent.velocity == Vector3.zero && !NavAgent.hasPath;// Mathf.Abs(Vector3.Distance(NavAgent.destination, gameObject.transform.position)) < 1.0f;
     }
 
     public Vector3 GetRandomDestinationOnNavMesh(float radius)
     {
         Vector3 targetDirection = RandomDirection(radius);
         NavMeshHit targetPoint;
-        NavMesh.SamplePosition(targetDirection, out targetPoint, radius, 1);
-        return targetPoint.position;
+        if (NavMesh.SamplePosition(targetDirection, out targetPoint, 1.0f, 1))
+            return targetPoint.position;
+        else
+            return gameObject.transform.position;
     }
 
     public Vector3 RandomDirection(float searchRadius)
