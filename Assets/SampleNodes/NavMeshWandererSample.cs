@@ -14,12 +14,10 @@ public class NavMeshWandererSample : MonoBehaviour {
 
     private BehaviourTree.IBaseNode m_parentNodePoint;
 
-	// Use this for initialization
 	void Start () {
         m_parentNodePoint = new SelectorNode(new SequencerNode(new IsAtDestination(m_agent), new GetNewDestination(m_agent, m_searchRadius)), new AlwaysSuceed());
 	}
 	
-	// Update is called once per frame
 	void Update () {
         m_parentNodePoint.OnTick();
 	}
