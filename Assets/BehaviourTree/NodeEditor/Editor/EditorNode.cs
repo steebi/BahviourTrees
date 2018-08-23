@@ -1,29 +1,31 @@
 ﻿using System;
 using UnityEngine;
+using UnityEditor;
 
 public class EditorNode
 {
-    private Rect m_rect;
+    private Rect m_rect;    // neccessary for changing it's position
     public Rect Rect { get { return m_rect; } }
+    public NodeConnectionPoint InPoint { get; private set; }
+    public NodeConnectionPoint OutPoint { get; private set; }
+    public Action<EditorNode> OnRemoveNode { get; private set; }
+    public bool IsSelected { get; set; }
 
     private string m_title;
-    public string Title { get { return m_title; } set { m_title = value; } }
-
     private GUIStyle m_style;
-    public GUIStyle Style { get { return m_style; } }
+    private GUIStyle m_defaultStyle;
+    private GUIStyle m_selectedStyle;
+    private bool m_dragging = false;
+    private Vector2 m_drag;
 
-    public bool Dragging { get; set; }
-    private int m_dragButtonIndex = -1;
-
-    public NodeConnectionPoint InPoint { get; set; }
-    public NodeConnectionPoint OutPoint { get; set; }
-
-    public EditorNode(Vector2 position, float width, float height, GUIStyle nodeStyle, GUIStyle inPointStyle, GUIStyle outPointStyle, Action<NodeConnectionPoint> OnClickInPoint, Action<NodeConnectionPoint> OnClickOutPoint)
+    public EditorNode(Vector2 position, float width, float height, GUIStyle defaultStyle, GUIStyle selectedStyle, GUIStyle inPointStyle, GUIStyle outPointStyle, Action<NodeConnectionPoint> OnClickInPoint, Action<NodeConnectionPoint> OnClickOutPoint, Action<EditorNode> onRemoveNode)
     {
         m_rect = new Rect(position.x, position.y, width, height);
-        m_style = nodeStyle;
+        m_style = m_defaultStyle = defaultStyle;
+        m_selectedStyle = selectedStyle;
         InPoint = new NodeConnectionPoint(this, NodeConnectionPointType.In, inPointStyle, OnClickInPoint);
         OutPoint= new NodeConnectionPoint(this, NodeConnectionPointType.Out, inPointStyle, OnClickOutPoint);
+        OnRemoveNode = onRemoveNode;
     }
 
     public void Drag(Vector2 delta)
@@ -35,7 +37,7 @@ public class EditorNode
     {
         InPoint.Draw();
         OutPoint.Draw();
-        GUI.Box(m_rect, Title, Style);
+        GUI.Box(Rect, m_title, m_style);
     }
 
     public bool ProcessEvents(Event e)
@@ -60,14 +62,26 @@ public class EditorNode
         switch (e.button)
         {
             case 0:
-                if (m_rect.Contains(e.mousePosition))
+                if (Rect.Contains(e.mousePosition))
                 {
-                    Dragging = true;
+                    m_dragging = true;
                     GUI.changed = true;
-                    m_dragButtonIndex = 0;
+                    IsSelected = true;
+                    m_style = m_selectedStyle;
                 }
                 else
+                {
                     GUI.changed = true;
+                    IsSelected = false;
+                    m_style = m_defaultStyle;
+                }
+                break;
+            case 1:
+                if (IsSelected && Rect.Contains(e.mousePosition))
+                {
+                    ProcessContextMenu();
+                    e.Use();
+                }
                 break;
         }
     }
@@ -77,10 +91,9 @@ public class EditorNode
         switch (e.button)
         {
             case 0:
-                if (Dragging && m_dragButtonIndex == e.button)
+                if (m_dragging)
                 {
-                    Dragging = false;
-                    m_dragButtonIndex = -1;
+                    m_dragging = false;
                 }
                 break;
         }
@@ -91,12 +104,19 @@ public class EditorNode
         switch (e.button)
         {
             case 0:
-                if (Dragging && m_dragButtonIndex == e.button)
+                if (m_dragging)
                 {
                     Drag(e.delta);
                     e.Use();
                 }
                 break;
         }
+    }
+
+    private void ProcessContextMenu()
+    {
+        GenericMenu genMen = new GenericMenu();
+        genMen.AddItem(new GUIContent("Remove node"), false, () => { OnRemoveNode(this); });
+        genMen.ShowAsContext();
     }
 }
